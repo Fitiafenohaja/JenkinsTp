@@ -2,6 +2,23 @@
 
 Projet de TP d'intégration continue : une application Java « Hello World » construite avec Maven, compilée et testée par un pipeline Jenkins, puis publiée sur un dépôt Nexus.
 
+## À propos
+
+L'application elle-même est volontairement minimale : elle affiche seulement `Hello World`. Le but du TP est la chaîne d'outils autour du code, pas le code lui-même.
+
+À chaque lancement du pipeline, Jenkins :
+
+1. récupère le code depuis GitHub ;
+2. le compile et le package en `.jar` avec Maven ;
+3. exécute le programme pour vérifier qu'il fonctionne ;
+4. publie le `.jar` sur Nexus, le dépôt d'artefacts où sont stockées les versions construites.
+
+```
+GitHub ──► Jenkins (build + run) ──► Nexus (maven-snapshots)
+```
+
+Ce schéma est celui qu'on retrouve en entreprise : le développeur pousse son code, le serveur d'intégration continue le construit et le vérifie automatiquement, et le résultat est rangé dans un dépôt d'où il peut être récupéré ou déployé.
+
 ## Contenu
 
 | Fichier | Rôle |
