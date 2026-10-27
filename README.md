@@ -26,19 +26,56 @@ Projet de TP d'intégration continue : une application Java « Hello World » co
 
 ## Environnement Docker
 
-Jenkins et Nexus tournent dans des conteneurs reliés par le réseau `cicd`, ce qui permet à Jenkins de joindre Nexus via `http://nexus:8081`.
+Jenkins et Nexus tournent dans des conteneurs reliés par le réseau `cicd`, ce qui permet à Jenkins de joindre Nexus via `http://nexus:8081`. Les données sont conservées dans les volumes `jenkins_home` et `nexus-data`.
+
+### Première installation
 
 ```bash
+# Réseau commun
 docker network create cicd
-docker network connect cicd jenkins
-docker run -d --name nexus --network cicd -p 8081:8081 \
-  -v nexus-data:/nexus-data sonatype/nexus3:3.70.1
+
+# Jenkins
+docker run -d --name jenkins --network cicd --restart unless-stopped \
+  -p 8080:8080 -p 50000:50000 \
+  -v jenkins_home:/var/jenkins_home \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v /usr/local/bin/docker:/usr/bin/docker \
+  jenkins/jenkins:2.555.2-lts
+
+# Nexus
+docker run -d --name nexus --network cicd --restart unless-stopped \
+  -p 8081:8081 \
+  -v nexus-data:/nexus-data \
+  sonatype/nexus3:3.70.1
 ```
 
-Mot de passe admin initial de Nexus :
+Si le conteneur `jenkins` existe déjà sans le réseau : `docker network connect cicd jenkins`.
+
+### Mots de passe initiaux
 
 ```bash
+# Jenkins (assistant de première connexion)
+docker exec jenkins cat /var/jenkins_home/secrets/initialAdminPassword
+
+# Nexus (utilisateur admin, à changer à la première connexion)
 docker exec nexus cat /nexus-data/admin.password
+```
+
+Nexus met 2 à 3 minutes à démarrer. Il est prêt quand cette commande renvoie `200` :
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8081/service/rest/v1/status
+```
+
+### Démarrer, arrêter, consulter
+
+```bash
+docker start jenkins nexus     # démarrer
+docker stop jenkins nexus      # arrêter
+docker restart jenkins         # redémarrer Jenkins
+docker ps                      # vérifier qu'ils tournent
+docker logs -f jenkins         # logs Jenkins
+docker logs -f nexus           # logs Nexus
 ```
 
 ## Configuration Jenkins
@@ -46,6 +83,9 @@ docker exec nexus cat /nexus-data/admin.password
 - **Tools** : une installation Maven nommée `Maven3`
 - **Credentials** : un identifiant *Username with password* d'ID `nexus-credentials` contenant le compte Nexus
 - **Job** : type *Pipeline*, *Pipeline script from SCM*, dépôt `https://github.com/Fitiafenohaja/JenkinsTp.git`, branche `*/main`, script `Jenkinsfile`
+- **Lancer un build** : ouvrir le job `JenkinsTp` puis *Build Now*. Le job ne se déclenche pas automatiquement à chaque push.
+
+Si le mot de passe Nexus change, mettre à jour l'identifiant `nexus-credentials` dans Jenkins, sinon l'étape *Deploy to Nexus* échoue.
 
 ## Lancer en local
 
